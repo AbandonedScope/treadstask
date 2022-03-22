@@ -17,10 +17,10 @@ public class Port {
     private static final int MAX_WAREHOUSE_CAPACITY = 20;
     private static final int MIN_WAREHOUSE_RESERVE = 0;
     private static final int MAX_PIERS_AMOUNT = 5;
-    private static final ReentrantLock lock = new ReentrantLock();
-    private static final Condition pierCondition = lock.newCondition();
-    private static final Condition warehouseOverloadedCondition = lock.newCondition();
-    private static final Condition warehouseEmptyCondition = lock.newCondition();
+    private static final ReentrantLock piersManipulationLock = new ReentrantLock();
+    private static final ReentrantLock cargoManipulationLock = new ReentrantLock();
+    private static final Condition pierCondition = piersManipulationLock.newCondition();
+    private static final Condition cargoCondition = cargoManipulationLock.newCondition();
     private static final AtomicBoolean isCreated = new AtomicBoolean(false);
     private final Queue<Pier> freePiers;
     private int currentContainersAmount;
@@ -34,14 +34,14 @@ public class Port {
 
     public static Port getInstance() {
         if (!isCreated.get()) {
-            lock.lock();
+            piersManipulationLock.lock();
             try {
                 if (instance == null) {
                     instance = new Port();
                     isCreated.set(true);
                 }
             } finally {
-                lock.unlock();
+                piersManipulationLock.unlock();
             }
         }
 
@@ -49,9 +49,9 @@ public class Port {
     }
 
     public void appointPierToShip(CargoShip ship) { // FIXME: 22.03.2022 exception
-        lock.lock();
         logger.log(Level.INFO, "Thread {} pier appointing started", Thread.currentThread().getName());
         ship.setShipState(CargoShipState.PROCESSING);
+        piersManipulationLock.lock();
         try {
             Pier pier;
             while ((pier = freePiers.poll()) == null) {
@@ -66,7 +66,7 @@ public class Port {
         } catch (InterruptedException e) {
             e.printStackTrace();
         } finally {
-            lock.unlock();
+            piersManipulationLock.unlock();
             try {
                 TimeUnit.MILLISECONDS.sleep(3);
             } catch (InterruptedException e) {
@@ -76,7 +76,7 @@ public class Port {
     }
 
     public void releasePierFromShip(CargoShip ship) {
-        lock.lock();
+        piersManipulationLock.lock();
         try {
             Pier pier = ship.getPier();
             freePiers.add(pier);
@@ -84,41 +84,31 @@ public class Port {
             ship.setPier(null);
             pierCondition.signalAll();
         } finally {
-            lock.unlock();
+            piersManipulationLock.unlock();
         }
     }
 
 
-    public void serveShip(CargoShip ship) { // FIXME: 22.03.2022 lock?
-        lock.lock();
+    public void serveShip(CargoShip ship) {
         logger.log(Level.INFO, "Thread {} processing started.", Thread.currentThread().getName());
         ship.setShipState(CargoShipState.WAITING);
-        try {
-            if (ship.getCurrentContainerAmount() == 0) {
-                loadShip(ship);
-            } else {
-                unloadShip(ship);
-            }
-        } finally {
-            lock.unlock();
-            try {
-                TimeUnit.MILLISECONDS.sleep(3);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+        if (ship.getCurrentContainerAmount() == 0) {
+            loadShip(ship);
+        } else {
+            unloadShip(ship);
         }
     }
 
     public void loadShip(CargoShip ship) { // FIXME: 22.03.2022 exception
-        lock.lock();
         logger.log(Level.INFO, "Thread {} loading started.", Thread.currentThread().getName());
         ship.setShipState(CargoShipState.PROCESSING);
+        cargoManipulationLock.lock();
         try {
             TimeUnit.MILLISECONDS.sleep(100);
             while (currentContainersAmount - CargoShip.MAX_CONTAINER_AMOUNT < MIN_WAREHOUSE_RESERVE) {
                 logger.log(Level.INFO, "Thread {} waiting for cargo started.", Thread.currentThread().getName());
                 ship.setShipState(CargoShipState.WAITING);
-                warehouseEmptyCondition.await();
+                cargoCondition.await();
             }
 
             ship.setShipState(CargoShipState.PROCESSING);
@@ -126,29 +116,24 @@ public class Port {
             currentContainersAmount -= CargoShip.MAX_CONTAINER_AMOUNT;
             ship.setCurrentContainerAmount(CargoShip.MAX_CONTAINER_AMOUNT);
             logger.log(Level.INFO, "Thread {} loading ended.", Thread.currentThread().getName());
-            warehouseOverloadedCondition.signalAll();
+            cargoCondition.signalAll();
         } catch (InterruptedException e) {
             e.printStackTrace();
         } finally {
-            lock.unlock();
-            try {
-                TimeUnit.MILLISECONDS.sleep(3);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            cargoManipulationLock.unlock();
         }
     }
 
     public void unloadShip(CargoShip ship) { // FIXME: 22.03.2022 exception
-        lock.lock();
         logger.log(Level.INFO, "Thread {} unloading started.", Thread.currentThread().getName());
         ship.setShipState(CargoShipState.PROCESSING);
+        cargoManipulationLock.lock();
         try {
             TimeUnit.MILLISECONDS.sleep(100);
             while (currentContainersAmount + ship.getCurrentContainerAmount() > MAX_WAREHOUSE_CAPACITY) {
                 logger.log(Level.INFO, "Thread {} waiting for free space started.", Thread.currentThread().getName());
                 ship.setShipState(CargoShipState.WAITING);
-                warehouseOverloadedCondition.await();
+                cargoCondition.await();
             }
 
             ship.setShipState(CargoShipState.PROCESSING);
@@ -156,16 +141,11 @@ public class Port {
             currentContainersAmount += ship.getCurrentContainerAmount();
             ship.setCurrentContainerAmount(0);
             logger.log(Level.INFO, "Thread {} unloading ended.", Thread.currentThread().getName());
-            warehouseEmptyCondition.signalAll();
+            cargoCondition.signalAll();
         } catch (InterruptedException e) {
             e.printStackTrace();
         } finally {
-            lock.unlock();
-            try {
-                TimeUnit.MILLISECONDS.sleep(3);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            cargoManipulationLock.unlock();
         }
     }
 
