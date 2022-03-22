@@ -1,9 +1,7 @@
 package com.mahanko.threadstask.entity;
 
-import java.util.UUID;
-
 public class Pier {
-    private int id;
+    private final int id;
 
     public Pier(int id) {
         this.id = id;

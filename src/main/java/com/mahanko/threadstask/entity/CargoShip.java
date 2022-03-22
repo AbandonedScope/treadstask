@@ -6,6 +6,10 @@ public class CargoShip extends Thread {
     private Pier pier;
     private CargoShipState state;
 
+    public CargoShip() {
+        state = CargoShipState.CREATED;
+    }
+
     public CargoShipState getShipState() {
         return  state;
     }
@@ -28,5 +32,14 @@ public class CargoShip extends Thread {
 
     public Pier getPier() {
         return  pier;
+    }
+
+    @Override
+    public void run() {
+        Port port= Port.getInstance();
+        port.appointPierToShip(this);
+        port.serveShip(this);
+        port.releasePierFromShip(this);
+        state = CargoShipState.SERVED;
     }
 }
