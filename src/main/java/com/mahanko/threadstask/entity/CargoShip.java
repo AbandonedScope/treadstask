@@ -1,6 +1,11 @@
 package com.mahanko.threadstask.entity;
 
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class CargoShip extends Thread {
+    private static final Logger logger = LogManager.getLogger();
     public static final int MAX_CONTAINER_AMOUNT = 5;
     private int currentContainerAmount;
     private Pier pier;
@@ -34,12 +39,33 @@ public class CargoShip extends Thread {
         return  pier;
     }
 
+    public void loadCargo() {
+        Port port = Port.getInstance();
+        port.reserveSpaceForCargo(MAX_CONTAINER_AMOUNT);
+        currentContainerAmount = MAX_CONTAINER_AMOUNT;
+    }
+
+    public void unloadCargo() {
+        Port port = Port.getInstance();
+        port.freeSpaceFromCargo(currentContainerAmount);
+        currentContainerAmount = 0;
+    }
+
     @Override
     public void run() {
         Port port= Port.getInstance();
-        port.appointPierToShip(this);
-        port.serveShip(this);
-        port.releasePierFromShip(this);
+        logger.log(Level.INFO, "Thread {} pier appointing started", Thread.currentThread().getName());
+        setShipState(CargoShipState.WAITING);
+        setPier(port.getPier());
+        setShipState(CargoShipState.PROCESSING);
+        if (currentContainerAmount == 0) {
+            loadCargo();
+        } else {
+            unloadCargo();
+        }
+        Pier oldPier = getPier();
+        setPier(null);
+        port.addPier(oldPier);
         state = CargoShipState.SERVED;
     }
 }
