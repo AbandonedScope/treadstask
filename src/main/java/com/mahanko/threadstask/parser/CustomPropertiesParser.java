@@ -13,32 +13,44 @@ import java.util.Locale;
 import static com.mahanko.threadstask.parser.CustomPropertiesTags.*;
 
 public class CustomPropertiesParser {
-    public static final Logger logger = LogManager.getLogger();
-    private CustomPropertiesParser() {
-    }
+    private static final Logger logger = LogManager.getLogger();
 
-    public static CustomProperties parse(List<String> properties) throws CustomThreadException {
+    public CustomProperties parse(List<String> properties) throws CustomThreadException {
         CustomProperties.PropertiesBuilder builder = CustomProperties.newBuilder();
         for (String propertyLine: properties) {
-            String[] list = propertyLine.split(" ");
+            String[] list = propertyLine.split(":");
             int value = Integer.parseInt(list[1]);
-            CustomPropertiesTags property = valueOf(list[0].toUpperCase(Locale.ROOT).replace('-','_'));
-            switch (property) {
-                case SHIP_MAX_CONTAINER_AMOUNT:
-                    builder.setMaxShipContainerAmount(value);
-                    break;
-                case PORT_MAX_PIERS_AMOUNT:
-                    builder.setMaxPortPiersAmount(value);
-                    break;
-                case PORT_MIN_WAREHOUSE_RESERVE:
-                    builder.setMinPortWarehouseReserve(value);
-                    break;
-                case PORT_MAX_WAREHOUSE_CAPACITY:
-                    builder.setMaxPortWarehouseCapacity(value);
-                    break;
-                default:
-                    logger.log(Level.ERROR, "Unexpected value: {}" , list[0]);
-                    throw new CustomThreadException("Unexpected value: " + list[0]);
+            try {
+                CustomPropertiesTags property = valueOf(list[0].toUpperCase(Locale.ROOT).replace('-','_'));
+                switch (property) {
+                    case SHIP_MAX_CONTAINER_AMOUNT:
+                        builder.setMaxShipContainerAmount(value);
+                        break;
+                    case PORT_MAX_PIERS_AMOUNT:
+                        builder.setMaxPortPiersAmount(value);
+                        break;
+                    case PORT_MIN_WAREHOUSE_RESERVE:
+                        builder.setMinPortWarehouseReserve(value);
+                        break;
+                    case PORT_MAX_WAREHOUSE_CAPACITY:
+                        builder.setMaxPortWarehouseCapacity(value);
+                        break;
+                    case SHIPS_AMOUNT:
+                        builder.setShipsAmount(value);
+                        break;
+                    case CARGO_PER_SHIP_AMOUNT:
+                        builder.setCargoPerShipAmount(value);
+                        break;
+                    case SHIPS_WITH_CARGO_AMOUNT:
+                        builder.setShipsWithCargoAmount(value);
+                        break;
+                    default:
+                        logger.log(Level.ERROR, "Unexpected value: {}" , list[0]);
+                        throw new CustomThreadException("Unexpected value: " + list[0]);
+                }
+            } catch (IllegalArgumentException e) {
+                logger.log(Level.ERROR, e);
+                throw new CustomThreadException(e);
             }
         }
 

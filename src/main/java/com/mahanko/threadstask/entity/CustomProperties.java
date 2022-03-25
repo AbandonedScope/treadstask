@@ -5,8 +5,20 @@ public class CustomProperties {
     private int minPortWarehouseReserve = 0;
     private int maxPortPiersAmount = 5;
     private int maxShipContainerAmount = 5;
+    private int shipsAmount = 10;
+    private int shipsWithCargoAmount = 5;
+    private int cargoPerShipAmount = 5;
 
-    public CustomProperties() {
+    public int getShipsAmount() {
+        return shipsAmount;
+    }
+
+    public int getShipsWithCargoAmount() {
+        return shipsWithCargoAmount;
+    }
+
+    public int getCargoPerShipAmount() {
+        return cargoPerShipAmount;
     }
 
     public static  PropertiesBuilder newBuilder() {
@@ -50,6 +62,21 @@ public class CustomProperties {
 
         public PropertiesBuilder setMaxShipContainerAmount(int amount) {
             CustomProperties.this.maxShipContainerAmount = amount;
+            return this;
+        }
+
+        public PropertiesBuilder setShipsAmount(int amount) {
+            CustomProperties.this.shipsAmount = amount;
+            return this;
+        }
+
+        public PropertiesBuilder setShipsWithCargoAmount(int amount) {
+            CustomProperties.this.shipsWithCargoAmount = amount;
+            return this;
+        }
+
+        public PropertiesBuilder setCargoPerShipAmount(int amount) {
+            CustomProperties.this.cargoPerShipAmount = amount;
             return this;
         }
 

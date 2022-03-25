@@ -1,17 +1,19 @@
 package com.mahanko.threadstask.entity;
 
+import com.mahanko.threadstask.exception.CustomThreadException;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public class CargoShip extends Thread {
     private static final Logger logger = LogManager.getLogger();
-    public static final int MAX_CONTAINER_AMOUNT = 5;
+    public int maxContainerAmount;
     private int currentContainerAmount;
     private Pier pier;
     private CargoShipState state;
 
-    public CargoShip() {
+    public CargoShip(CustomProperties properties) {
+        maxContainerAmount = properties.getMaxShipContainerAmount();
         state = CargoShipState.CREATED;
     }
 
@@ -39,13 +41,13 @@ public class CargoShip extends Thread {
         return  pier;
     }
 
-    public void loadCargo() {
+    public void loadCargo() throws CustomThreadException {
         Port port = Port.getInstance();
-        port.reserveSpaceForCargo(MAX_CONTAINER_AMOUNT);
-        currentContainerAmount = MAX_CONTAINER_AMOUNT;
+        port.reserveSpaceForCargo(maxContainerAmount);
+        currentContainerAmount = maxContainerAmount;
     }
 
-    public void unloadCargo() {
+    public void unloadCargo() throws CustomThreadException {
         Port port = Port.getInstance();
         port.freeSpaceFromCargo(currentContainerAmount);
         currentContainerAmount = 0;
@@ -53,19 +55,23 @@ public class CargoShip extends Thread {
 
     @Override
     public void run() {
-        Port port= Port.getInstance();
-        logger.log(Level.INFO, "Thread {} pier appointing started", Thread.currentThread().getName());
-        setShipState(CargoShipState.WAITING);
-        setPier(port.getPier());
-        setShipState(CargoShipState.PROCESSING);
-        if (currentContainerAmount == 0) {
-            loadCargo();
-        } else {
-            unloadCargo();
+        try {
+            Port port = Port.getInstance();
+            logger.log(Level.INFO, "Thread {} pier appointing started", Thread.currentThread().getName());
+            setShipState(CargoShipState.WAITING);
+            setPier(port.getPier());
+            setShipState(CargoShipState.PROCESSING);
+            if (currentContainerAmount == 0) {
+                loadCargo();
+            } else {
+                unloadCargo();
+            }
+            Pier oldPier = getPier();
+            setPier(null);
+            port.addPier(oldPier);
+            state = CargoShipState.SERVED;
+        } catch (CustomThreadException e) {
+            logger.log(Level.ERROR, e);
         }
-        Pier oldPier = getPier();
-        setPier(null);
-        port.addPier(oldPier);
-        state = CargoShipState.SERVED;
     }
 }

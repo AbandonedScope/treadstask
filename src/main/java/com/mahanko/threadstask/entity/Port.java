@@ -1,5 +1,6 @@
 package com.mahanko.threadstask.entity;
 
+import com.mahanko.threadstask.exception.CustomThreadException;
 import com.mahanko.threadstask.util.PierIdGenerator;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
@@ -14,9 +15,9 @@ import java.util.concurrent.locks.ReentrantLock;
 public class Port {
     private static final Logger logger = LogManager.getLogger();
     private static Port instance;
-    private static final int MAX_WAREHOUSE_CAPACITY = 20;
-    private static final int MIN_WAREHOUSE_RESERVE = 0;
-    private static final int MAX_PIERS_AMOUNT = 5;
+    private static int maxWarehouseCapacity = 20;
+    private static int minWarehouseReserve = 0;
+    private static int maxPiersAmount = 5;
     private static final ReentrantLock piersManipulationLock = new ReentrantLock();
     private static final ReentrantLock cargoManipulationLock = new ReentrantLock();
     private static final Condition pierCondition = piersManipulationLock.newCondition();
@@ -27,9 +28,15 @@ public class Port {
 
     private Port() {
         freePiers = new LinkedList<>();
-        for (int i = 0; i < MAX_PIERS_AMOUNT; i++) {
+        for (int i = 0; i < maxPiersAmount; i++) {
             freePiers.add(new Pier(PierIdGenerator.generateId()));
         }
+    }
+
+    public static void setProperties(CustomProperties properties) {
+        maxPiersAmount = properties.getMaxPortPiersAmount();
+        minWarehouseReserve = properties.getMinPortWarehouseReserve();
+        maxWarehouseCapacity = properties.getMaxPortWarehouseCapacity();
     }
 
     public static Port getInstance() {
@@ -48,7 +55,7 @@ public class Port {
         return instance;
     }
 
-    public Pier getPier() { // FIXME: 22.03.2022 exception
+    public Pier getPier() throws CustomThreadException {
         Pier pier = null;
         piersManipulationLock.lock();
         try {
@@ -59,7 +66,9 @@ public class Port {
 
             logger.log(Level.INFO, "To thread {} appointed pier with id:{} .", Thread.currentThread().getName(), pier.getId());
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            logger.log(Level.ERROR, e);
+            Thread.currentThread().interrupt();
+            throw new CustomThreadException(e);
         } finally {
             piersManipulationLock.unlock();
         }
@@ -78,12 +87,12 @@ public class Port {
         }
     }
 
-    public void reserveSpaceForCargo(int spaceToReserve) { // FIXME: 24.03.2022 exception
+    public void reserveSpaceForCargo(int spaceToReserve) throws CustomThreadException {
         logger.log(Level.INFO, "Thread {} loading started.", Thread.currentThread().getName());
         cargoManipulationLock.lock();
         try {
             TimeUnit.MILLISECONDS.sleep(100);
-            while (currentContainersAmount - spaceToReserve < MIN_WAREHOUSE_RESERVE) {
+            while (currentContainersAmount - spaceToReserve < minWarehouseReserve) {
                 logger.log(Level.INFO, "Thread {} waiting for cargo started.", Thread.currentThread().getName());
                 cargoCondition.await();
             }
@@ -93,18 +102,20 @@ public class Port {
             logger.log(Level.INFO, "Thread {} loading ended.", Thread.currentThread().getName());
             cargoCondition.signalAll();
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            logger.log(Level.ERROR, e);
+            Thread.currentThread().interrupt();
+            throw new CustomThreadException(e);
         } finally {
             cargoManipulationLock.unlock();
         }
     }
 
-    public void freeSpaceFromCargo(int spaceToFree) { // FIXME: 24.03.2022 exception
+    public void freeSpaceFromCargo(int spaceToFree) throws CustomThreadException {
         logger.log(Level.INFO, "Thread {} unloading started.", Thread.currentThread().getName());
         cargoManipulationLock.lock();
         try {
             TimeUnit.MILLISECONDS.sleep(100);
-            while (currentContainersAmount + spaceToFree > MAX_WAREHOUSE_CAPACITY) {
+            while (currentContainersAmount + spaceToFree > maxWarehouseCapacity) {
                 logger.log(Level.INFO, "Thread {} waiting for free space started.", Thread.currentThread().getName());
                 cargoCondition.await();
             }
@@ -114,7 +125,9 @@ public class Port {
             logger.log(Level.INFO, "Thread {} unloading ended.", Thread.currentThread().getName());
             cargoCondition.signalAll();
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            logger.log(Level.ERROR, e);
+            Thread.currentThread().interrupt();
+            throw new CustomThreadException(e);
         } finally {
             cargoManipulationLock.unlock();
         }
