@@ -1,0 +1,4 @@
+ship-max-container-amount: 5
+port-max-warehouse-capacity: 20
+port-min-warehouse-reserve: 0
+port-max-piers-amount: 5
