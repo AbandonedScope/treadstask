@@ -34,9 +34,16 @@ public class Port {
     }
 
     public static void setProperties(CustomProperties properties) {
-        maxPiersAmount = properties.getMaxPortPiersAmount();
-        minWarehouseReserve = properties.getMinPortWarehouseReserve();
-        maxWarehouseCapacity = properties.getMaxPortWarehouseCapacity();
+        piersManipulationLock.lock();
+        cargoManipulationLock.lock();
+        try {
+            maxPiersAmount = properties.getMaxPortPiersAmount();
+            minWarehouseReserve = properties.getMinPortWarehouseReserve();
+            maxWarehouseCapacity = properties.getMaxPortWarehouseCapacity();
+        } finally {
+            cargoManipulationLock.unlock();
+            piersManipulationLock.unlock();
+        }
     }
 
     public static Port getInstance() {
