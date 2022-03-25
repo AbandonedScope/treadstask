@@ -7,7 +7,7 @@ import org.apache.logging.log4j.Logger;
 
 public class CargoShip extends Thread {
     private static final Logger logger = LogManager.getLogger();
-    public int maxContainerAmount;
+    public final int maxContainerAmount;
     private int currentContainerAmount;
     private Pier pier;
     private CargoShipState state;
