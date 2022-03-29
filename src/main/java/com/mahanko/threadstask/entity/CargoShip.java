@@ -5,7 +5,7 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-public class CargoShip extends Thread {
+public class CargoShip implements Runnable {
     private static final Logger logger = LogManager.getLogger();
     public final int maxContainerAmount;
     private int currentContainerAmount;
@@ -18,7 +18,7 @@ public class CargoShip extends Thread {
     }
 
     public CargoShipState getShipState() {
-        return  state;
+        return state;
     }
 
     public void setShipState(CargoShipState state) {
@@ -34,22 +34,24 @@ public class CargoShip extends Thread {
     }
 
     public void setCurrentContainerAmount(int newContainerAmount) {
+        if (newContainerAmount > maxContainerAmount) {
+            newContainerAmount = maxContainerAmount;
+        }
+
         currentContainerAmount = newContainerAmount;
     }
 
     public Pier getPier() {
-        return  pier;
+        return pier;
     }
 
     public void loadCargo() throws CustomThreadException {
-        Port port = Port.getInstance();
-        port.reserveSpaceForCargo(maxContainerAmount);
+        Port.getInstance().reserveSpaceForCargo(maxContainerAmount);
         currentContainerAmount = maxContainerAmount;
     }
 
     public void unloadCargo() throws CustomThreadException {
-        Port port = Port.getInstance();
-        port.freeSpaceFromCargo(currentContainerAmount);
+        Port.getInstance().freeSpaceFromCargo(currentContainerAmount);
         currentContainerAmount = 0;
     }
 

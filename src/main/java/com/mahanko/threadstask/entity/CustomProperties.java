@@ -21,7 +21,7 @@ public class CustomProperties {
         return cargoPerShipAmount;
     }
 
-    public static  PropertiesBuilder newBuilder() {
+    public static PropertiesBuilder newBuilder() {
         return new CustomProperties().new PropertiesBuilder();
     }
 

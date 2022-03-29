@@ -1,6 +1,7 @@
 package com.mahanko.threadstask.entity;
 
 import com.mahanko.threadstask.exception.CustomThreadException;
+import com.mahanko.threadstask.util.CustomTimeRandomGenerator;
 import com.mahanko.threadstask.util.PierIdGenerator;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
@@ -14,6 +15,8 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class Port {
     private static final Logger logger = LogManager.getLogger();
+    private static final int LEFT_CARGO_PROCESSING_TIME_BOUND_MILLISECONDS = 100;
+    private static final int RIGHT_CARGO_PROCESSING_TIME_BOUND_MILLISECONDS = 1001;
     private static Port instance;
     private static int maxWarehouseCapacity = 20;
     private static int minWarehouseReserve = 0;
@@ -63,7 +66,7 @@ public class Port {
     }
 
     public Pier getPier() throws CustomThreadException {
-        Pier pier = null;
+        Pier pier;
         piersManipulationLock.lock();
         try {
             while ((pier = freePiers.poll()) == null) {
@@ -104,9 +107,9 @@ public class Port {
                 cargoCondition.await();
             }
 
-            TimeUnit.MILLISECONDS.sleep(100);
+            TimeUnit.MILLISECONDS.sleep(CustomTimeRandomGenerator.random(LEFT_CARGO_PROCESSING_TIME_BOUND_MILLISECONDS, RIGHT_CARGO_PROCESSING_TIME_BOUND_MILLISECONDS));
             currentContainersAmount -= spaceToReserve;
-            logger.log(Level.INFO, "Thread {} loading ended.", Thread.currentThread().getName());
+            logger.log(Level.INFO, "Thread {} loading ended. Current warehouse state {}/{}.", Thread.currentThread().getName(), currentContainersAmount, maxWarehouseCapacity);
             cargoCondition.signalAll();
         } catch (InterruptedException e) {
             logger.log(Level.ERROR, e);
@@ -121,15 +124,14 @@ public class Port {
         logger.log(Level.INFO, "Thread {} unloading started.", Thread.currentThread().getName());
         cargoManipulationLock.lock();
         try {
-            TimeUnit.MILLISECONDS.sleep(100);
             while (currentContainersAmount + spaceToFree > maxWarehouseCapacity) {
                 logger.log(Level.INFO, "Thread {} waiting for free space started.", Thread.currentThread().getName());
                 cargoCondition.await();
             }
 
-            TimeUnit.MILLISECONDS.sleep(100);
+            TimeUnit.MILLISECONDS.sleep(CustomTimeRandomGenerator.random(LEFT_CARGO_PROCESSING_TIME_BOUND_MILLISECONDS, RIGHT_CARGO_PROCESSING_TIME_BOUND_MILLISECONDS));
             currentContainersAmount += spaceToFree;
-            logger.log(Level.INFO, "Thread {} unloading ended.", Thread.currentThread().getName());
+            logger.log(Level.INFO, "Thread {} unloading ended. Current warehouse state {}/{}.", Thread.currentThread().getName(), currentContainersAmount, maxWarehouseCapacity);
             cargoCondition.signalAll();
         } catch (InterruptedException e) {
             logger.log(Level.ERROR, e);
